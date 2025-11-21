@@ -21,7 +21,7 @@ func init() {
 	}
 }
 
-func GenerateCodeToken(userID uint) (string, error) {
+func GenerateAuthToken(userID uint) (string, error) {
 	Claims := &Claims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{

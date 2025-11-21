@@ -8,14 +8,14 @@ import (
 
 type User struct {
 	gorm.Model
-	Email    string `gorm:"unique;not null"`
-	Password string `gorm:"not null"`
-	Name     string
+	Email    string `json:"email" gorm:"unique;not null"`
+	Password string `json:"password" gorm:"not null"`
+	Name     string `json:"name" gorm:"not null"`
 }
 
 type VerificationCode struct {
 	gorm.Model
-	Email     string    `gorm:"not null"`
-	Code      string    `gorm:"not null"`
-	ExpiresAt time.Time `gorm:"not null"`
+	Email     string    `json:"email" gorm:"not null"`
+	Code      string    `json:"code" gorm:"not null"`
+	ExpiresAt time.Time `json:"expires_at" gorm:"not null"`
 }
