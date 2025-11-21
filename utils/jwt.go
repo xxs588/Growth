@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"log"
 	"os"
 	"time"
 
@@ -15,13 +14,10 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func init() {
-	if len(JWTSecret) == 0 {
-		log.Panic("jwt密钥不能为空")
-	}
-}
-
 func GenerateAuthToken(userID uint) (string, error) {
+	// 在函数内部读取，确保 .env 已加载
+	secret := []byte(os.Getenv("JWT_SECRET"))
+
 	Claims := &Claims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -30,5 +26,5 @@ func GenerateAuthToken(userID uint) (string, error) {
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims)
-	return token.SignedString(JWTSecret)
+	return token.SignedString(secret)
 }
