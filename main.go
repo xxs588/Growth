@@ -1,0 +1,39 @@
+package main
+
+import (
+	"log"
+	"mygo/config"
+	"mygo/routes"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+)
+
+func main() {
+	// 首先加载 .env 文件
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("未找到 .env 文件")
+	}
+	// 连接数据库
+	config.InitDB()
+
+	// 创建 Gin 路由器
+	r := gin.Default()
+
+	// 配置 CORS 跨域 - 必须在路由注册之前
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:3000"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}))
+
+	// 设置路由组 先配置 CORS → 再注册路由！
+	routes.InintUserRoutes(r)
+
+	// 启动服务器
+	log.Println("服务器启动在端口 8080")
+	r.Run(":8080")
+}
