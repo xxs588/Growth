@@ -7,7 +7,7 @@ import (
 )
 
 func InintUserRoutes(r *gin.Engine) {
-	userGroup := r.Group("/user")
+	userGroup := r.Group("/")
 	{
 		userGroup.POST("/send_code", controller.SendCode)
 		userGroup.POST("/register", controller.Register)

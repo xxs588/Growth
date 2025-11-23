@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"mygo/config"
 	"mygo/model"
 	"mygo/utils"
@@ -22,15 +23,10 @@ func SendCode(c *gin.Context) {
 		})
 		return
 	}
+	// 1. 先生成验证码
 	verificationCode := utils.GenerateCode()
-	emailBody := "Ciallo～ (∠・ω< )⌒★,您的验证码是：" + verificationCode + "，有效期10分钟喵~..."
-	err = utils.SendEmail(req.Email, "[Growth]xxs的服务 注册验证码", emailBody)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"msg": "发送邮件失败",
-		})
-		return
-	}
+
+	// 2. 先存入数据库 (这样如果数据库挂了，就不会发邮件了)
 	verificationRecord := model.VerificationCode{
 		Email:     req.Email,
 		Code:      verificationCode,
@@ -38,11 +34,51 @@ func SendCode(c *gin.Context) {
 	}
 	result := config.DB.Create(&verificationRecord)
 	if result.Error != nil {
+		// 打印数据库错误
+		println("保存验证码失败:", result.Error.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"msg": "保存验证码失败",
+			"msg": "系统错误: 保存验证码失败",
 		})
 		return
 	}
+
+	// 3. 再发送邮件
+	// 使用 HTML 模板，保留原有文案风格并增加可爱元素
+	emailBody := fmt.Sprintf(`
+		<div style="background-color: #fff0f5; padding: 20px; font-family: 'Microsoft YaHei', sans-serif;">
+			<div style="max-width: 600px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(255,182,193,0.3); border: 2px solid #ffb6c1;">
+				<h4 style="color: #ff69b4; text-align: center;">✨ Ciallo～ (∠・ω< )⌒★ </h4>
+				<p style="font-size: 16px; color: #666; line-height: 1.6;">
+					亲爱的喵喵：<br>
+					这里是小学生的 Growth 服务喵！收到您的注册请求啦~ (QwQ)
+				</p>
+				<div style="background-color: #fff5f7; padding: 20px; text-align: center; border-radius: 10px; margin: 25px 0; border: 1px dashed #ffb6c1;">
+					<p style="color: #ff69b4; margin: 0 0 10px 0; font-size: 14px;">您的喵喵验证码是：</p>
+					<span style="font-size: 32px; font-weight: bold; color: #ff1493; letter-spacing: 6px; text-shadow: 1px 1px 2px #ffd1dc;">%s</span>
+				</div>
+				<p style="font-size: 14px; color: #888;">
+					⏰ 有效期只有 10 分钟哦！请尽快使用喵~<br>
+					(如非本人操作，请无视这封邮件，继续睡觉觉吧~ 💤)
+				</p>
+				<hr style="border: none; border-top: 1px dashed #ffb6c1; margin: 20px 0;">
+				<p style="font-size: 12px; color: #aaa; text-align: center;">
+					Growth  敬上 🐾<br>
+					<span style="font-size: 10px;">(邮件由系统自动发送，回复也不会有猫猫理你哦~)</span>
+				</p>
+			</div>
+		</div>
+	`, verificationCode)
+
+	err = utils.SendEmail(req.Email, "[Growth] 您的注册验证码来啦 ( >ω<)♡", emailBody)
+	if err != nil {
+		println("发送邮件失败:", err.Error())
+		// 如果邮件发送失败，可以选择把刚才存的验证码删掉，或者不管它
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"msg": "发送邮件失败",
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"msg": "验证码发送成功",
 	})

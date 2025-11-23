@@ -2,31 +2,29 @@ package utils
 
 import (
 	"crypto/rand"
-	"fmt"
 	"math/big"
-	"net/smtp"
 	"os"
 	"strconv"
+
+	"gopkg.in/gomail.v2"
 )
 
 func SendEmail(to string, subject string, body string) error {
 	from := os.Getenv("SMTP_EMAIL")
 	password := os.Getenv("SMTP_PASSWORD")
 	smtpHost := os.Getenv("SMTP_HOST")
-	smtpPort := os.Getenv("SMTP_PORT")
+	smtpPort, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
 
-	// 组装认证信息
-	auth := smtp.PlainAuth("", from, password, smtpHost)
+	m := gomail.NewMessage()
+	m.SetHeader("From", from)
+	m.SetHeader("To", to)
+	m.SetHeader("Subject", subject)
+	m.SetBody("text/html", body)
 
-	msg := []byte("To: " + to + "\r\n" +
-		"Subject: " + subject + "\r\n" +
-		"\r\n" +
-		body + "\r\n")
-	// 在正式的SMTP协议规范中，使用 \r\n 是必须的
-	// 连接 SMTP 服务器发送邮件
-	addr := fmt.Sprintf("%s:%s", smtpHost, smtpPort)
-	err := smtp.SendMail(addr, auth, from, []string{to}, msg)
-	return err
+	d := gomail.NewDialer(smtpHost, smtpPort, from, password)
+
+	// gomail 会自动处理 SSL/TLS 连接
+	return d.DialAndSend(m)
 }
 
 // GenerateCode 生成 6 位随机验证码
