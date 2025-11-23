@@ -129,6 +129,7 @@ func Register(c *gin.Context) {
 		})
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"msg":     "注册成功",
 		"user_id": newUser.ID,
@@ -137,18 +138,10 @@ func Register(c *gin.Context) {
 
 // 登录
 func Login(c *gin.Context) {
-
-	var user model.User
-
 	var req struct {
 		Email    string `json:"email" binding:"required,email"`
 		Password string `json:"password" binding:"required"`
 		Name     string `json:"name"`
-	}
-
-	if err := config.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"msg": "账号不存在"})
-		return
 	}
 
 	err := c.ShouldBindJSON(&req)
@@ -158,27 +151,29 @@ func Login(c *gin.Context) {
 		})
 		return
 	}
-	result := config.DB.Where("email = ? AND password = ?", req.Email, req.Password).First(&user)
-	if result.Error != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"msg": "邮箱或密码错误",
-		})
+
+	// 2. 根据邮箱找用户
+	var user model.User
+	if err := config.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"msg": "账号不存在"})
 		return
 	}
 
+	// 3. 验证密码
 	if !utils.CheckPasswordHash(req.Password, user.Password) {
 		c.JSON(http.StatusUnauthorized, gin.H{"msg": "密码错误"})
 		return
 	}
 
+	// 4. 生成 Token
 	token, err := utils.GenerateAuthToken(user.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"msg": "未携带token",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"msg": "生成Token失败"})
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{
+		"msg":   "登录成功",
 		"token": token,
 	})
 }
