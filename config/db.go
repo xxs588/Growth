@@ -33,5 +33,5 @@ func InitDB() {
 	if err != nil {
 		log.Fatal("迁移数据库失败:", err)
 	}
-	fmt.Println("数据库连接成功")
+	log.Println("数据库连接成功")
 }
