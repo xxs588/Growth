@@ -90,6 +90,7 @@ func Register(c *gin.Context) {
 		Email    string `json:"email" binding:"required,email"`
 		Password string `json:"password" binding:"required"`
 		Name     string `json:"name"`
+		Code     string `json:"code" binding:"required"` // 新增验证码字段
 	}
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
@@ -99,6 +100,25 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	// 1. 校验验证码
+	var verificationCode model.VerificationCode
+	// 查询数据库中是否存在该邮箱和验证码的记录
+	if err := config.DB.Where("email = ? AND code = ?", req.Email, req.Code).First(&verificationCode).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"msg": "验证码错误或已被使用",
+		})
+		return
+	}
+
+	// 检查验证码是否过期
+	if time.Now().After(verificationCode.ExpiresAt) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"msg": "验证码已过期，请重新获取",
+		})
+		return
+	}
+
+	// 2. 检查邮箱是否已注册
 	var existingUser model.User
 	result := config.DB.Where("email = ?", req.Email).First(&existingUser)
 	if result.Error == nil {
@@ -122,6 +142,7 @@ func Register(c *gin.Context) {
 		Name:     req.Name,
 	}
 
+	// 3. 创建用户
 	result = config.DB.Create(&newUser)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -130,9 +151,23 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	// 4. 注册成功后自动登录（生成 Token）
+	token, err := utils.GenerateAuthToken(newUser.ID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"msg":     "注册成功，但自动登录失败，请手动登录",
+			"user_id": newUser.ID,
+		})
+		return
+	}
+
+	// 5.验证码使用后删除，防止重复使用
+	config.DB.Delete(&verificationCode)
+
 	c.JSON(http.StatusOK, gin.H{
 		"msg":     "注册成功",
 		"user_id": newUser.ID,
+		"token":   token,
 	})
 }
 
