@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"mygo/config"
 	"mygo/model"
+	"mygo/service"
 	"mygo/utils"
 	"net/http"
 	"time"
@@ -128,18 +129,16 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	hashedPassword, err := utils.HashPassword(req.Password)
-	if err != nil {
+	newUser := model.User{
+		Email: req.Email,
+		Name:  req.Name,
+	}
+	// 使用 User 模型的方法设置密码
+	if err := newUser.SetPassword(req.Password); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"msg": "密码加密失败",
 		})
 		return
-	}
-
-	newUser := model.User{
-		Email:    req.Email,
-		Password: hashedPassword,
-		Name:     req.Name,
 	}
 
 	// 3. 创建用户
@@ -195,7 +194,7 @@ func Login(c *gin.Context) {
 	}
 
 	// 3. 验证密码
-	if !utils.CheckPasswordHash(req.Password, user.Password) {
+	if !service.VerifyLogin(&user, req.Password) {
 		c.JSON(http.StatusUnauthorized, gin.H{"msg": "密码错误"})
 		return
 	}
